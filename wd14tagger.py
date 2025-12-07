@@ -180,26 +180,40 @@ class WD14Tagger:
             "replace_underscore": ("BOOLEAN", {"default": defaults["replace_underscore"]}),
             "trailing_comma": ("BOOLEAN", {"default": defaults["trailing_comma"]}),
             "exclude_tags": ("STRING", {"default": defaults["exclude_tags"]}),
+            "replace_first": ("STRING", {"default": ""}),
+            "replace_first_with": ("STRING", {"default": ""}),
+            "replace_second": ("STRING", {"default": ""}),
+            "replace_second_with": ("STRING", {"default": ""}),
         }}
 
-    RETURN_TYPES = ("STRING",)
-    OUTPUT_IS_LIST = (True,)
+    RETURN_TYPES = ("STRING","STRING",)
+    RETURN_NAMES = ("tags","tag_list",)
     FUNCTION = "tag"
-    OUTPUT_NODE = True
 
     CATEGORY = "image"
 
-    def tag(self, image, model, threshold, character_threshold, exclude_tags="", replace_underscore=False, trailing_comma=False):
+    def tag(self, image, model, threshold, character_threshold, exclude_tags="",replace_first="",replace_first_with="",replace_second="",replace_second_with="", replace_underscore=False, trailing_comma=False):
         tensor = image*255
         tensor = np.array(tensor, dtype=np.uint8)
 
         pbar = comfy.utils.ProgressBar(tensor.shape[0])
         tags = []
+        seperator = " , "
+        valout = ""
         for i in range(tensor.shape[0]):
             image = Image.fromarray(tensor[i])
             tags.append(wait_for_async(lambda: tag(image, model, threshold, character_threshold, exclude_tags, replace_underscore, trailing_comma)))
             pbar.update(1)
-        return {"ui": {"tags": tags}, "result": (tags,)}
+            valout = seperator.join(tags)
+            listout = tags[0].split(',')
+        # Apply first replacement if specified
+        if replace_first is not None:
+            valout = valout.replace(replace_first, replace_first_with, 1)
+
+        if replace_second is not None and replace_second_with is not None:
+            valout = valout.replace(replace_second, replace_second_with,1)
+
+        return (valout, listout,)
 
 
 NODE_CLASS_MAPPINGS = {
